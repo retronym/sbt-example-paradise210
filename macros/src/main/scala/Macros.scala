@@ -9,4 +9,6 @@ object Macros {
     val helper = new Helper[c.type](c)
     c.Expr[Unit](helper.hello)
   }
+
+  def elvis[A >: Null](a: A): A = macro elvisImpl
 }
