@@ -5,6 +5,7 @@ object Test extends App {
     class C {
       class D {
         def e = "e"
+        def g = throw new NullPointerException
       }
       def dNull: D = null
       def d = new D
@@ -17,4 +18,11 @@ object Test extends App {
   println(e1)
   val e2: String = Macros.elvis(O.c.dNull.e)
   println(e2)
+
+  try {
+    println(Macros.elvis(O.c.d.g))
+    println("NPE should not have been caught.")
+  } catch {
+    case _: NullPointerException => // okay
+  }
 }
