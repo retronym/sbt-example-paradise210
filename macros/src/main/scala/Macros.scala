@@ -10,5 +10,9 @@ object Macros {
     c.Expr[Unit](helper.hello)
   }
 
-  def elvis[A >: Null](a: A): A = macro elvisImpl
+  def elvis[A >: Null](a: A): A = macro elvisImpl[A]
+
+  def elvisImpl[A >: Null: c.WeakTypeTag](c: Context)(a: c.Expr[A]): c.Expr[A] = {
+    ???
+  }
 }
