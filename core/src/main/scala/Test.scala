@@ -5,7 +5,7 @@ object Test extends App {
     class C {
       class D {
         def e = "e"
-        def g = throw new NullPointerException
+        def g = throw new java.lang.NullPointerException
       }
       def dNull: D = null
       def d = new D
@@ -23,6 +23,14 @@ object Test extends App {
     println(Macros.elvis(O.c.d.g))
     println("NPE should not have been caught.")
   } catch {
-    case _: NullPointerException => // okay
+    case _: java.lang.NullPointerException => // okay
   }
+
+  // Demonstrating the lack of hygiene in the elvis macro;
+  // `Ident(newTypeName("NullPointerException"))` will bind to
+  // this class, rather than `j.l.NPE`!
+  //
+  // Making this class `final` means that `catch { case _: Test.NPE => }`
+  // results in a compile error, rather than just a warning.
+  final class NullPointerException
 }
