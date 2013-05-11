@@ -14,8 +14,17 @@ object Macros {
 
   def elvisImpl[A >: Null: c.WeakTypeTag](c: Context)(a: c.Expr[A]): c.Expr[A] = {
     import c.universe._
-    reify {
-      try { a.splice } catch { case _: NullPointerException => null }
-    }
+    val tree =
+      Try(a.tree,
+          List(
+            CaseDef(
+              Typed(Ident(nme.WILDCARD), Ident(newTypeName("NullPointerException"))),
+              EmptyTree,
+              Literal(Constant(null))
+            )
+          ),
+          EmptyTree
+      )
+    c.Expr[A](tree)
   }
 }
