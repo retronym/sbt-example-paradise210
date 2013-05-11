@@ -14,11 +14,12 @@ object Macros {
 
   def elvisImpl[A >: Null: c.WeakTypeTag](c: Context)(a: c.Expr[A]): c.Expr[A] = {
     import c.universe._
+    val npe = c.mirror.staticClass("java.lang.NullPointerException")
     val tree =
       Try(a.tree,
           List(
             CaseDef(
-              Typed(Ident(nme.WILDCARD), Ident(newTypeName("NullPointerException"))),
+              Typed(Ident(nme.WILDCARD), Ident(npe)),
               EmptyTree,
               Literal(Constant(null))
             )
