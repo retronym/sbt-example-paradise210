@@ -10,4 +10,9 @@ class Helper[C <: Context](val c: C) extends QuasiquoteCompat {
   def hello = q"""
     println("hello world!")
   """
+
+  def tryCatchNPE(body: Tree): Tree = {
+    val npe = c.mirror.staticClass("java.lang.NullPointerException")
+    q"try { $body } catch { case _: $npe => null}"
+  }
 }
