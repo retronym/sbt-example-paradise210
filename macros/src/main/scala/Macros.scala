@@ -15,9 +15,8 @@ object Macros {
   def elvisImpl[A >: Null: c.WeakTypeTag](c: Context)(a: c.Expr[A]): c.Expr[A] = {
     import c.universe._
     val helper = new Helper[c.type](c)
-    import helper.{tryCatchNPE}
-
-    val tree = tryCatchNPE(a.tree)
+    import helper.{ elvisTransformer }
+    val tree = elvisTransformer.transform(a.tree)
     c.Expr[A](tree)
   }
 }
