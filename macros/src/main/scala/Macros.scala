@@ -15,8 +15,10 @@ object Macros {
   def elvisImpl[A >: Null: c.WeakTypeTag](c: Context)(a: c.Expr[A]): c.Expr[A] = {
     import c.universe._
     val helper = new Helper[c.type](c)
-    import helper.{ elvisTransformer }
-    val tree = elvisTransformer.transform(a.tree)
+    import helper.{ elvisTransformer, currentOwner }
+    val tree = elvisTransformer.atOwner(currentOwner) { // focus the transformer on `currentOwner`.
+      elvisTransformer.transform(a.tree)                // run the transform
+    }
     c.Expr[A](tree)
   }
 }

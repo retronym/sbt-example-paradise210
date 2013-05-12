@@ -19,23 +19,43 @@ class Helper[C <: Context](val c: C) extends QuasiquoteCompat {
   object elvisTransformer extends Transformer {
     /** val temp$N = qual; if (qual eq null) null else qual.name */
     def guardedSelect(select: Select, qual: Tree, name: TermName): Tree = {
-      val tempName: TermName = newTermName(c.fresh("temp$"))
+      /** Construct a symbol for a temporary val used to store the result of `qual`. */
+      def tempSym0(qual: Tree): Symbol = {
+        val tempSym  = currentOwner.newTermSymbol(c.fresh("temp$"))
+        val symtab   = c.universe.asInstanceOf[reflect.internal.SymbolTable]
+        tempSym.asInstanceOf[symtab.Symbol]
+          .setInfo(qual.tpe.asInstanceOf[symtab.Type])
+          .setPos(qual.pos.asInstanceOf[symtab.Position])
+          .asInstanceOf[Symbol]
+      }
+      val tempSym = tempSym0(qual)
+      def tempRef = Ident(tempSym).setType(qual.tpe).setPos(qual.pos)
       val b = q"""
-        val $tempName = $qual
-        if ($tempName eq null)
+        ${ValDef(tempSym, qual)}
+        if ($tempRef eq null)
           null
         else
-          $tempName.$name
+          ${treeCopy.Select(select, tempRef, name)}
       """
       c.typeCheck(b)
     }
 
     override def transform(tree: Tree): Tree = {
       tree match {
-        case sel @ Select(qual, name: TermName)
+        case sel @ q"$qual.${name : TermName}"
              if typeOf[Null] <:< qual.tpe => guardedSelect(sel, transform(qual), name)
         case x                            => super.transform(tree)
       }
     }
   }
+
+   // A hack to get the current owner without needing to downcast the
+   // macro context to `reflect.macros.runtime.Context`.
+   // We initalize our transformer below with this owner. This is
+   // only needed if the transformer implementation manually creates
+   // the symbols for the temporary vals it extracts.
+   def currentOwner: Symbol = {
+     val dummyTree = c.typeCheck(reify({def dummy$0 = 0} ).tree)
+     dummyTree.collect { case dd: DefDef => dd.symbol.owner }.head
+   }
 }
