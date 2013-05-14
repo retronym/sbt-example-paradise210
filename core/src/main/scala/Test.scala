@@ -26,6 +26,8 @@ object Test extends App {
     case _: java.lang.NullPointerException => // okay
   }
 
+  Macros.elvis({ def id[A](a: A) = a; identity(O.c.dNull.e) })
+
   // Demonstrating the lack of hygiene in the elvis macro;
   // `Ident(newTypeName("NullPointerException"))` will bind to
   // this class, rather than `j.l.NPE`!

@@ -3,6 +3,7 @@ import scala.reflect.macros.Context
 // uses the technique described in:
 // http://docs.scala-lang.org/overviews/macros/overview.html#writing_bigger_macros
 class Helper[C <: Context](val c: C) extends QuasiquoteCompat {
+
   import c.universe._
 
   // to learn more about quasiquotes, visit:
@@ -21,8 +22,8 @@ class Helper[C <: Context](val c: C) extends QuasiquoteCompat {
     def guardedSelect(select: Select, qual: Tree, name: TermName): Tree = {
       /** Construct a symbol for a temporary val used to store the result of `qual`. */
       def tempSym0(qual: Tree): Symbol = {
-        val tempSym  = currentOwner.newTermSymbol(c.fresh("temp$"))
-        val symtab   = c.universe.asInstanceOf[reflect.internal.SymbolTable]
+        val tempSym = currentOwner.newTermSymbol(c.fresh("temp$"))
+        val symtab = c.universe.asInstanceOf[reflect.internal.SymbolTable]
         tempSym.asInstanceOf[symtab.Symbol]
           .setInfo(qual.tpe.asInstanceOf[symtab.Type])
           .setPos(qual.pos.asInstanceOf[symtab.Position])
@@ -32,7 +33,7 @@ class Helper[C <: Context](val c: C) extends QuasiquoteCompat {
       def tempRef = Ident(tempSym).setType(qual.tpe).setPos(qual.pos)
       val b = q"""
         ${ValDef(tempSym, qual)}
-        if ($tempRef eq null)
+        if ($tempRef == null)
           null
         else
           ${treeCopy.Select(select, tempRef, name)}
@@ -41,21 +42,35 @@ class Helper[C <: Context](val c: C) extends QuasiquoteCompat {
     }
 
     override def transform(tree: Tree): Tree = {
+      def isNullable(qual: Tree): Boolean = {
+        def isMethod(tp: Type) = {
+          tp match {
+            case _: PolyType | _: MethodType => true
+            case _ => false
+          }
+        }
+        (typeOf[Null] <:< qual.tpe) && (!(isMethod(qual.tpe) || qual.symbol.isPackage || qual.symbol.isModule))
+      }
       tree match {
-        case sel @ q"$qual.${name : TermName}"
-             if typeOf[Null] <:< qual.tpe => guardedSelect(sel, transform(qual), name)
-        case x                            => super.transform(tree)
+        case sel@q"$qual.${name: TermName}" if isNullable(qual) =>
+          guardedSelect(sel, transform(qual), name)
+        case x =>
+          super.transform(tree)
       }
     }
   }
 
-   // A hack to get the current owner without needing to downcast the
-   // macro context to `reflect.macros.runtime.Context`.
-   // We initalize our transformer below with this owner. This is
-   // only needed if the transformer implementation manually creates
-   // the symbols for the temporary vals it extracts.
-   def currentOwner: Symbol = {
-     val dummyTree = c.typeCheck(reify({def dummy$0 = 0} ).tree)
-     dummyTree.collect { case dd: DefDef => dd.symbol.owner }.head
-   }
+  // A hack to get the current owner without needing to downcast the
+  // macro context to `reflect.macros.runtime.Context`.
+  // We initalize our transformer below with this owner. This is
+  // only needed if the transformer implementation manually creates
+  // the symbols for the temporary vals it extracts.
+  def currentOwner: Symbol = {
+    val dummyTree = c.typeCheck(reify({
+      def dummy$0 = 0
+    }).tree)
+    dummyTree.collect {
+      case dd: DefDef => dd.symbol.owner
+    }.head
+  }
 }
