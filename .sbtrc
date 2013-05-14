@@ -1,0 +1,4 @@
+alias i=gen-idea no-sbt-build-module no-classifiers
+alias off=set offline := true
+alias r=;clean;compile
+alias repl=macros/console-quick
